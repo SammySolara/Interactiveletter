@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather&display=swap" rel="stylesheet">
     <title>Private Letter</title>
     <style>
         * {
@@ -12,11 +13,11 @@
         }
         
         body {
-            font-family: 'Georgia', serif;
+            font-family: 'Merriweather', serif;
             background: linear-gradient(135deg, #ff9a9e, #fecfef, #fecfef, #ff9a9e);
             color: #444;
             height: 100vh;
-            overflow: hidden;
+            overflow: hidden; /* Keep body overflow hidden initially for the lockbox/typing animations */
             position: relative;
         }
         
@@ -103,7 +104,7 @@
             margin-bottom: 15px;
             font-size: 2.2em;
             letter-spacing: 3px;
-            font-family: 'Brush Script MT', cursive;
+            font-family: 'Merriweather', serif;
             text-shadow: 2px 2px 4px rgba(255, 105, 180, 0.3);
         }
         
@@ -221,6 +222,7 @@
             z-index: 3;
             transition: opacity 1s ease-in-out;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow-y: auto; /* Make the notes-app itself scrollable */
         }
         
         .notes-header {
@@ -292,7 +294,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: calc(100vh - 100px);
+            height: calc(100vh - 100px); /* Adjust height to fill remaining space */
             text-align: center;
             padding: 40px;
         }
@@ -403,8 +405,9 @@
         .note-editor {
             display: none;
             padding: 40px;
-            height: calc(100vh - 100px);
-            overflow-y: auto;
+            min-height: calc(100vh - 80px); /* Ensure it takes at least the remaining viewport height */
+            box-sizing: border-box; /* Include padding in height calculation */
+            overflow-y: visible; /* Let the parent (notes-app) handle scrolling */
         }
         
         .note-meta {
@@ -444,7 +447,7 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             font-weight: 400;
             resize: none;
-            min-height: 500px;
+            min-height: 500px; /* Keep a minimum height for the textarea */
             pointer-events: auto;
             user-select: text;
             cursor: text;
@@ -664,10 +667,11 @@
     
     <div class="lockbox-container" id="lockboxContainer">
         <div class="lockbox">
-            <div class="lock-icon">💖</div>
-            <h1>Private Letter</h1>
-            <p>Enter the code to unlock</p>
-            <input type="password" class="code-input" id="codeInput" placeholder="••••" maxlength="4">
+            <div class="lock-icon">🔒</div>
+            <h1>Phương's Letter</h1>
+            <p>Enter the secret word to unlock</p>
+            <p>Hint: Từ nhỏ nhất chứa được nhiều hơn cả một sa mạc</p>
+            <input type="password" class="code-input" id="codeInput" placeholder="••••••••">
             <br>
             <button class="unlock-btn" onclick="checkCode()">Unlock</button>
             <div class="error-message" id="errorMessage">Incorrect code. Please try again.</div>
@@ -722,10 +726,10 @@
         <div class="ig-header">
             <div class="ig-back">←</div>
             <div class="ig-user-info">
-                <div class="ig-profile-pic">Y</div>
+                <div class="ig-profile-pic">S</div>
                 <div>
-                    <div class="ig-username">your_username</div>
-                    <div class="ig-active-status">Active now</div>
+                    <div class="ig-username">Sam</div>
+                    <div class="ig-active-status">Last active 9 months ago</div>
                 </div>
             </div>
             <div class="ig-actions">
@@ -768,14 +772,22 @@
             }
         }
         
+        function normalize(str) {
+            return str
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .trim();
+        }
+
         function checkCode() {
             if (isAutomating) return;
-            
+
             const input = document.getElementById('codeInput');
             const error = document.getElementById('errorMessage');
-            const code = input.value.trim();
-            
-            if (code === '1234') {
+            const code = normalize(input.value);
+
+            if (code === 'nuoc mat') {
                 unlockSequence();
             } else {
                 error.classList.add('show');
@@ -787,6 +799,8 @@
                 }, 2000);
             }
         }
+
+
         
         function clearTyping() {
             if (currentTypeInterval) {
@@ -812,10 +826,8 @@
         function startTypingSequence() {
             const messages = [
                 "Hello Phuong, I hope you enjoyed my gifts and your birthday.",
-                "I am not sure when you are gonna see this, if ever.",
-                "This was supposed to be the last of my gifts, but to tell you the truth this might be a bit selfish of me as this is more for me than it is for you.",
-                "This may take a bit so please stay hydrated, sit back and relax as I write out some of my thoughts",
-                "Enjoy..."
+                "This was supposed to be the last of my gifts, but to tell you the truth this might be a bit selfish, since this one is for me.",
+                "This may take a bit so please sit back and relax as you watch me write out some of my thoughts",
             ];
             
             let messageIndex = 0;
@@ -973,15 +985,37 @@
             const letterContent = `Dear Phuong,
 
 I hope this finds you well and that you had an amazing birthday. I've been sitting here trying to find the right words to express everything I've been feeling, and honestly, I'm not sure I'll ever find them all.
+sd
+asd
 
-[YOUR FULL LETTER CONTENT WILL BE PASTED HERE]
-
-This is where you'll paste your complete letter to Phuong. The text will appear as if you're typing it out, but it won't be editable - just a beautiful display of your words.
-
-You can replace this placeholder text with your actual letter content. The typing effect will make it feel personal and intimate, as if you're writing it in real-time.
-
+asd
+asd
+as
+d
+asd
+asd
+as
+d
+as
+da
+sd
+a
+sd
+as
+da
+sd
+as
+da
+sd
+as
+da
+sd
+sad
+a
+sds
+A
 With all my love,
-[Your name]`;
+Sammy A.`;
             
             let i = 0;
             cursor.style.display = 'inline-block';
@@ -1036,8 +1070,6 @@ With all my love,
             const sendButton = document.getElementById('igSendButton');
             
             const messages = [
-                "Hey, I just finished writing you something...",
-                "I hoped you got a chance to read my letter 💕",
                 "I wanted to give you a space to share your thoughts if you want to",
                 "No pressure at all, but I'd love to hear what you're thinking ✨"
             ];
