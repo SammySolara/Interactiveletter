@@ -670,7 +670,7 @@
             <div class="lock-icon">🔒</div>
             <h1>Phương's Letter</h1>
             <p>Enter the secret word to unlock</p>
-            <p>Hint: Từ nhỏ nhất chứa được nhiều hơn cả một sa mạc</p>
+            <p>Hint: Không nói bằng lời, nhưng ai cũng từng nghe nó ít nhất một lần</p>
             <input type="password" class="code-input" id="codeInput" placeholder="••••••••">
             <br>
             <button class="unlock-btn" onclick="checkCode()">Unlock</button>
@@ -787,7 +787,7 @@
             const error = document.getElementById('errorMessage');
             const code = normalize(input.value);
 
-            if (code === 'nuoc mat') {
+            if (code === 'trai tim') {
                 unlockSequence();
             } else {
                 error.classList.add('show');
