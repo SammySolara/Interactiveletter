@@ -71,16 +71,18 @@ body {
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
+    height: 100dvh; /* Dynamic viewport height */
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 20px;
+    padding-top: env(safe-area-inset-top, 0); /* Fix for top bar */
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.6s ease-in-out, visibility 0.6s;
     z-index: 10;
 }
+
 
 .scene.active {
     opacity: 1;
@@ -209,6 +211,12 @@ body {
 
 
 /* --- SCENE 3: NOTES APP --- */
+
+.ig-header,
+.notes-header {
+    padding-top: calc(env(safe-area-inset-top, 0) + 10px); /* 10px default + notch */
+}
+
 #notesApp {
     background: #F9F9F9;
     flex-direction: column;
