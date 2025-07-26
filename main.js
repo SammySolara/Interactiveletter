@@ -295,6 +295,7 @@ Sammy A.`;
             const p = document.createElement('div');
             p.className = 'particle';
             p.style.left = `${Math.random() * 100}%`;
+            p.style.top = `${100 + Math.random() * 10}vh`; // Start between 100vh and 110vh
             p.style.animationDelay = `${Math.random() * 25}s`;
             p.style.animationDuration = `${Math.random() * 15 + 15}s`;
             particlesContainer.appendChild(p);
