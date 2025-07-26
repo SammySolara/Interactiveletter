@@ -167,20 +167,22 @@ document.addEventListener('DOMContentLoaded', () => {
         // ✨ CHANGE: The element is now the container div, not a separate span
         const typedElement = document.getElementById('typingText');
         const introMessages = [
-            "Hello Phuong, I hope you enjoyed your birthday.",
-            "This was supposed to be the last of my gifts...",
-            "but this one is a bit selfish, as it's really for me.",
-            "Please sit back and relax as I write out some of my thoughts."
+            "Phương nè...",
+            "Em vừa qua sinh nhật—có thể bên ai đó, hoặc chỉ lặng lẽ với chính mình. Dù sao đi nữa, anh vẫn muốn gửi em một cái gì đó... không giống mấy món quà bình thường.",
+            "Không phải quà để mở ra rồi cất lại. Cũng không phải cái gì để đem khoe lên mạng.",
+            "Anh làm cái này... vì anh không biết cách nào khác để nói những điều anh cứ giữ trong lòng hoài. Những thứ không nằm vừa trong một tin nhắn.",
+            "Nói thật thì, món này cũng có phần ích kỷ. Là một chỗ để anh viết ra—những điều chưa từng được nói hết.",
+            "Không áp lực, không mong chờ. Chỉ là một lời mời. Muốn ở lại bao lâu cũng được—miễn là em muốn."
         ];
         
         // ✨ CHANGE: Add 'typing' class to the text container to enable the CSS cursor
         typedElement.parentElement.classList.add('typing');
 
         for (const message of introMessages) {
-            await typeText(typedElement, message, 40);
-            await delay(2000);
+            await typeText(typedElement, message, 60);
+            await delay(3000);
             if (message !== introMessages[introMessages.length - 1]) {
-               await eraseText(typedElement, 20);
+               await eraseText(typedElement, 15);
                await delay(500);
             }
         }
@@ -203,13 +205,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const startTypingLetter = async () => {
         // ✨ CHANGE: All cursor logic has been removed from this function for a cleaner effect.
-        const letterContent = `Dear Phuong,
+        const letterContent = `Dear Phương,
 
 I've been sitting here trying to find the right words to express everything I've been feeling, and honestly, I'm not sure I'll ever find them all.
 
-[This is where your beautiful, heartfelt letter will go. You can write as much as you want here. The text box will scroll automatically as you add more content to this string.]
+[This is where the letter will go.]
 
-I wanted to create something special for you, something that was more than just a gift, but a small world for just a moment. I hope you liked it.
+I wanted to create something special for you, something that was more than just a gift, but a small world for just a moment. I hope you like it.
 
 With all my affection,
 Sammy A.`;
@@ -220,8 +222,8 @@ Sammy A.`;
     const startInstagramSequence = async () => {
         const chatContainer = document.getElementById('igChatContainer');
         const messages = [
-            "I wanted to give you a space to share your thoughts, if you want to.",
-            "No pressure at all, but I'd love to hear what you're thinking when you're ready ✨"
+            "Now that you got to experience a bit of my thought process, I wanted to give you a space to share your thoughts",
+            "No pressure at all, I won't be able to see anything you write unless you choose to share it with me ✨"
         ];
         
         for (const msg of messages) {
