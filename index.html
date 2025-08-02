@@ -52,17 +52,21 @@
         </div>
     </div>
 
-    <div class="scene" id="instagramDM">
+  <div class="scene" id="instagramDM">
+        <div class="ig-background" id="igBackground"></div>
         <div class="ig-header">
             <div class="ig-back" onclick="goBackToLetter()">
                 <svg width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="m14 18l-6-6l6-6l1.4 1.4l-4.6 4.6l4.6 4.6L14 18Z"></path></svg>
             </div>
             <div class="ig-user-info">
-                <div class="ig-profile-pic">S</div>
-                <div>
-                    <div class="ig-username">Sam</div>
-                    <div class="ig-active-status">Active now</div>
+                <div class="ig-profile-pic" style="background-image: url('./sam.jpg'); background-size: cover; background-position: center;"></div>
+            <div>
+                <div class="ig-username">Sam</div>
+                <div class="ig-active-status">
+                    <span class="active-dot"></span>
+                    Active now
                 </div>
+            </div>
             </div>
             <div class="ig-actions">
                 <div class="ig-action">📞</div>
@@ -73,7 +77,11 @@
         <div class="ig-input-area">
              <div class="ig-input-wrapper">
                 <input type="text" class="ig-message-input" id="igMessageInput" placeholder="Message...">
-                <div class="ig-send-button" id="igSendButton">Send</div>
+                <button class="ig-send-button" id="igSendButton">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/>
+                    </svg>
+                </button>
              </div>
         </div>
     </div>
