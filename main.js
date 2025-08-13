@@ -1,7 +1,21 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+    async function logEvent(eventType, details = {}) {
+    const deviceInfo = navigator.userAgent;
+
+    const { error } = await window.supabase
+        .from('alerts')
+        .insert([{
+            event_type: eventType,
+            details,
+            user_agent: deviceInfo
+        }]);
+
+    if (error) console.error("Supabase log error:", error);
+}
+
+
     let isAutomating = false;
-    let currentTypeInterval = null;
     let isMusicPlaying = false;
     let audioElement = null;
     const unlockSound = new Audio('./unlock.mp3');
@@ -54,13 +68,21 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.remove('disable-interactions');
         noteTextElement.style.pointerEvents = 'auto';
     };
+    const playTypingSound = () => {
+        typingSound.currentTime = 0;
+        typingSound.play().catch(e => console.log("Typing sound play failed:", e));
+    };
+    const playDeletingSound = () => {
+        deletingSound.currentTime = 0;
+        deletingSound.play().catch(e => console.log("Deleting sound play failed:", e));
+    };
 
-    const typeText = (element, text, interval = 50) => {
+    const typeText = (element, text, baseInterval = 50) => {
         return new Promise(resolve => {
             const isFormElement = element.tagName === 'TEXTAREA' || element.tagName === 'INPUT';
 
             let i = 0;
-            currentTypeInterval = setInterval(() => {
+            const typeCharacter = () => {
                 if (i < text.length) {
                     if (isFormElement) {
                         element.value += text[i];
@@ -71,33 +93,51 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (isFormElement) {
                         element.scrollTop = element.scrollHeight;
                     }
+                    const variation = Math.random() * 60 - 30; 
+                    const nextInterval = Math.max(10, baseInterval + variation);
+                    
+                    currentTypeInterval = setTimeout(typeCharacter, nextInterval);
                 } else {
-                    clearInterval(currentTypeInterval);
                     currentTypeInterval = null;
                     resolve();
                 }
-            }, interval);
+            };
+            
+            typeCharacter();
         });
     };
     
-    const backspace = (element, count, interval = 25) => {
+    const backspace = (element, count, baseInterval = 25) => {
         return new Promise(resolve => {
             const isFormElement = element.tagName === 'TEXTAREA' || element.tagName === 'INPUT';
             let i = 0;
-            const backspaceInterval = setInterval(() => {
+            const backspaceCharacter = () => {
                 if (i < count) {
-                    if (isFormElement) {
-                        element.value = element.value.slice(0, -1);
+                    const currentText = isFormElement ? element.value : element.textContent;
+                    if (currentText.length > 0) {
+                        if (isFormElement) {
+                            element.value = currentText.slice(0, -1);
+                        } else {
+                            element.textContent = currentText.slice(0, -1);
+                        }
+                        i++;
+                        if (isFormElement) {
+                            element.scrollTop = element.scrollHeight;
+                        }
+                        playDeletingSound();
+                        const variation = Math.random() * 40 - 20; variation
+                        const nextInterval = Math.max(5, baseInterval + variation);
+                        
+                        setTimeout(backspaceCharacter, nextInterval);
                     } else {
-                        element.textContent = element.textContent.slice(0, -1);
+                        resolve();
                     }
-                    i++;
-                    element.scrollTop = element.scrollHeight;
                 } else {
-                    clearInterval(backspaceInterval);
                     resolve();
                 }
-            }, interval);
+            };
+            
+            backspaceCharacter();
         });
     };
 
@@ -106,15 +146,16 @@ document.addEventListener('DOMContentLoaded', () => {
         element.focus();
 
         for (const step of script) {
-            
-            await delay(Math.random() * 150 + 50);
+            const hesitation = Math.random() * 200 + 50;
+            await delay(hesitation);
             
             switch (step.action) {
                 case 'type':
                     await typeText(element, step.text, step.speed || 80);
                     break;
                 case 'pause':
-                    await delay(step.duration);
+                    const pauseVariation = Math.random() * 0.4 + 0.8;
+                    await delay(step.duration * pauseVariation);
                     break;
                 case 'backspace':
                     await backspace(element, step.count, step.speed || 40);
@@ -128,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('songArtist').textContent = 'Quang Hung MasterD';
         audioElement = new Audio('./ThuỷTriều.mp3');
         audioElement.loop = true;
-        audioElement.volume = 0.3;
+        audioElement.volume = 0;
         vinylFab.addEventListener('click', toggleMusic);
     }; 
 
@@ -139,13 +180,38 @@ document.addEventListener('DOMContentLoaded', () => {
             vinylStatusIcon.textContent = '▶️';
             vinylFab.classList.remove('playing');
         } else {
-            audioElement.play().catch(e => console.error("Audio play failed:", e));
-            playPauseBtn.textContent = '⏸️';
-            vinylStatusIcon.textContent = '⏸️';
-            vinylFab.classList.add('playing');
+            fadeInMusic();
         }
         isMusicPlaying = !isMusicPlaying;
     };
+
+    const fadeInMusic = () => {
+        audioElement.volume = 0;
+        const playPromise = audioElement.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.catch(e => console.error("Audio play failed:", e));
+        }
+        
+        playPauseBtn.textContent = '⏸️';
+        vinylStatusIcon.textContent = '⏸️';
+        vinylFab.classList.add('playing');
+        const targetVolume = 0.1;
+        const fadeStep = targetVolume / 100;
+        const fadeInterval = 50;
+        let currentVolume = 0;
+        
+        const fadeAudio = setInterval(() => {
+            currentVolume += fadeStep;
+            if (currentVolume < targetVolume) {
+                audioElement.volume = currentVolume;
+            } else {
+                audioElement.volume = targetVolume;
+                clearInterval(fadeAudio);
+            }
+        }, fadeInterval);
+    };
+
 
     const checkCode = async () => {
         if (isAutomating) return;
@@ -153,9 +219,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (code === 'trai tim' || code === 'heart') {
             unlockSound.play().catch(() => {});
+            await logEvent('unlock_successful', { codeUsed: code});
             await unlockSequence();
         } else {
             errorSound.play().catch(() => {});
+            await logEvent('unlock_failed', { codeUsed: code});
             errorMessage.classList.add('show');
             codeInput.value = '';
             setTimeout(() => errorMessage.classList.remove('show'), 2000);
@@ -168,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
         scenes.lockbox.classList.add('exiting');
         await delay(600);
         showScene('typing');
+        await logEvent('sequence_progress', { stage: 'unlock_typing_screen' });
 
         if (!isMusicPlaying) {
             toggleMusic();
@@ -176,14 +245,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const typedElement = document.getElementById('typingText');
         const introMessages = [
-            "Phương nè...",
-            "Em vừa qua sinh nhật—có thể bên ai đó, hoặc chỉ lặng lẽ với chính mình. Dù sao đi nữa, anh vẫn muốn gửi em một cái gì đó... không giống mấy món quà bình thường.",
-            "Không phải quà để mở ra rồi cất lại. Cũng không phải cái gì để đem khoe lên mạng.",
-            "Anh làm cái này... vì anh không biết cách nào khác để nói những điều anh cứ giữ trong lòng hoài. Những thứ không nằm vừa trong một tin nhắn.",
-            "Nói thật thì, món này cũng có phần ích kỷ. Là một chỗ để anh viết ra—những điều chưa từng được nói hết.",
-            "Không áp lực, không mong chờ. Chỉ là một lời mời. Muốn ở lại bao lâu cũng được—miễn là em muốn."
+            "Phương nè…",
+            "Anh hy vọng hôm nay em được bao quanh bởi những người em yêu và những người làm em cảm thấy được yêu trở lại.",
+            "Anh thích tưởng tượng rằng em đã nhận được tất cả những gì em mong muốn — và hơn thế nữa.",
+            "Việc chọn món quà đúng cho em thật sự không dễ chút nào.",
+            "Cuối cùng, anh chọn một thứ để em có thể dùng mỗi ngày — khi học, khi chơi game — thứ mà em có thể tùy chỉnh bất cứ lúc nào nếu một ngày muốn đổi mới.",
+            "Anh nhớ từ rất lâu trước đây, em từng nói muốn anh ráp cho em một cái bàn phím. Vậy nên… đây là nó. Anh mong nó mang lại cho em nhiều niềm vui như khi anh lắp từng phím, từng ốc vít.",
+            "Anh cố tình chọn một bộ kit thật dễ để em có thể thay đổi mọi thứ một cách đơn giản, nếu em muốn.",
+            "Nhưng đó không phải là món quà duy nhất anh từng nghĩ đến.",
+            "Anh sợ nếu làm quá nhiều, nó sẽ thành gượng gạo… hoặc mất đi sự tự nhiên. Nên anh giữ mọi thứ lại, để vừa đủ.",
+            "Anh cũng muốn viết vài lời để động viên em… nhưng lại sợ, nếu em đã mệt mỏi vì nghe anh nói, thì nó sẽ trở thành gánh nặng.",
+            "Vậy nên, anh để nó trong một cuốn sách.",
+            "Một cuốn sách đã thay đổi cách anh sống. Anh cố tình đặt mã mở khóa dựa trên một điều trong đó — để nếu em tìm ra, là vì chính sự tò mò và những gì em học được đã dẫn em đến đây, chứ không phải vì anh ép em phải đọc lá thư này.",
+            "Nếu em đang đọc những dòng này… thì anh đã đúng khi tin rằng em sẽ tự tìm đến.",
+            "Nhưng mà… vài câu chữ in trên giấy sẽ quá đơn giản với một người như anh. Anh vốn dĩ đã quen sống hơi ‘quá tay’ một chút, nên mong em tha thứ.",
+            "Anh nghĩ… thay vì chỉ đọc lời anh viết, sao em không nhìn thấy chúng được tạo ra ngay trước mắt mình?",
+            "Không gì thân mật hơn việc được ở bên trong suy nghĩ của ai đó khi họ nghĩ về mình.",
+            "Vậy nên, nếu em đồng ý, anh sẽ viết cho em một lá thư — và nếu ở lại tới cuối, sẽ có một bất ngờ đang đợi.",
+            "Sẽ mất một chút thời gian… nên hãy tìm một chỗ yên tĩnh, riêng tư, thoải mái để đọc những gì anh đã cất trong lòng bấy lâu.",
+            "Trang web này đang bật cho em một bài hát nền — bài mà từ lâu em từng nói là thích. Anh đã giữ lại tên nó… phòng khi cần đến, và hôm nay chính là lúc đó.",
+            "Nếu muốn, em có thể tắt nhạc bằng cách bấm vào chiếc đĩa than ở góc dưới bên phải."
         ];
-        
         typedElement.parentElement.classList.add('typing');
 
         for (const message of introMessages) {
@@ -199,28 +281,30 @@ document.addEventListener('DOMContentLoaded', () => {
         await delay(1000);
 
         showScene('notes');
+        await logEvent('sequence_progress', { stage: 'notes_screen' });
         document.getElementById('noteDate').textContent = new Date().toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' });
         await delay(500);
         await startTypingLetter();
 
         await delay(4000);
         showScene('instagram');
+        await logEvent('sequence_progress', { stage: 'instagram_screen' });
         await startInstagramSequence();
         
         unlockInteractions();
     };
 
 const letterScript = [
-    { action: 'type', text: 'Chúc mừng sinh nhật Phương!', speed: 80 },
+    { action: "type", text: "Chúc mừng sinh nhật Phương!", "speed": 80 },
     { action: 'pause', duration: 400 },
     { action: 'type', text: '\nAnh mong hôm nay là một ngày thật đặc biệt với em.', speed: 90 },
     { action: 'pause', duration: 2000 },
     { action: 'type', text: '\n\nThiệt tình anh cũng chẳng biết người ta thường làm gì trong ngày sinh nhật—', speed: 85 },
     { action: 'pause', duration: 1200 },
     { action: 'type', text: '\nanh thì… có bao giờ mừng sinh nhật mình đâu.', speed: 100 },
-    { action: 'type', text: ' (cũng chẳng cần thiết)', speed: 80 },
+    { action: 'type', text: ' cũng chẳng cần thiết', speed: 80 },
     { action: 'pause', duration: 700 },
-    { action: 'backspace', count: 22, speed: 30 },
+    { action: 'backspace', count: 21, speed: 30 },
     { action: 'pause', duration: 2000 },
     { action: 'type', text: '\n\nDù gì thì, anh muốn viết cho em một lá thư.', speed: 80 },
     { action: 'pause', duration: 1500 },
@@ -229,9 +313,9 @@ const letterScript = [
     { action: 'type', text: '\nAnh thấy đây là phần ý nghĩa nhất trong món quà\nmà có thể tồn tại mãi với thời gian.', speed: 75 },
     { action: 'pause', duration: 2500 },
     { action: 'type', text: '\n\nAnh thật sự muốn nói nhiều lắm—', speed: 80 },
-    { action: 'type', text: ' (quá nhiều, thật ra)', speed: 90 },
+    { action: 'type', text: ' quá nhiều, thật ra', speed: 90 },
     { action: 'pause', duration: 600 },
-    { action: 'backspace', count: 20, speed: 30 },
+    { action: 'backspace', count: 19, speed: 30 },
     { action: 'pause', duration: 1300 },
     { action: 'type', text: '\nvì dù nhìn vô chắc em tưởng anh nói hết rồi,\nnhưng những gì anh từng nói chắc chưa tới một phần trăm\ncủa mớ suy nghĩ đã lướt ngang qua đầu anh.', speed: 90 },
     { action: 'pause', duration: 2800 },
@@ -240,9 +324,9 @@ const letterScript = [
     { action: 'type', text: ' Vì nhiều lý do lắm.', speed: 90 },
     { action: 'pause', duration: 2000 },
     { action: 'type', text: '\nMột trong số đó là:\nem từng là một trong những nguồn vui chính\ncủa anh hồi anh mới đặt chân tới Việt Nam.', speed: 85 },
-    { action: 'type', text: ' (và vẫn là)', speed: 100 },
+    { action: 'type', text: ' và vẫn là', speed: 100 },
     { action: 'pause', duration: 800 },
-    { action: 'backspace', count: 10, speed: 30 },
+    { action: 'backspace', count: 9, speed: 30 },
     { action: 'pause', duration: 2500 },
     { action: 'type', text: '\n\nLúc đó anh thấy mình hơi ngợp và lạc lõng—', speed: 90 },
     { action: 'pause', duration: 1200 },
@@ -256,18 +340,18 @@ const letterScript = [
     { action: 'pause', duration: 2500 },
     { action: 'type', text: '\n\nMặt khác,\nnó biến anh thành một bức tranh vá chằng vá đụp\ntừ từng người mà anh từng thấy dễ gần, dễ mến—', speed: 80 },
     { action: 'pause', duration: 1500 },
-    { action: 'backspace', count: 52, speed: 30 },
+    { action: 'backspace', count: 51, speed: 30 },
     { action: 'pause', duration: 1000 },
-    { action: 'type', text: 'ghép từ từng người anh từng thấy dễ gần, dễ mến—', speed: 75 },
+    { action: 'type', text: '\nghép từ từng người anh từng thấy dễ gần, dễ mến—', speed: 75 },
     { action: 'pause', duration: 1200 },
     { action: 'type', text: '\ntới mức, anh dần quên mất:\nphần nào mới thật sự là của riêng mình.', speed: 90 },
     { action: 'pause', duration: 3000 },
     { action: 'type', text: '\n\nNó khiến anh trở thành một người bán hàng tuyệt vời,\nmột cuốn sách sống động viết bằng những người quanh anh,\nnhưng lại là kẻ tệ hại nhất khi phải chăm sóc chính bản thân mình.', speed: 85 },
     { action: 'pause', duration: 3500 },
     { action: 'type', text: '\n\nNhưng những lúc được ở bên em thật sự đặc biệt.', speed: 80 },
-    { action: 'type', text: ' (hiếm hoi lắm)', speed: 90 },
+    { action: 'type', text: ' hiếm hoi lắm', speed: 90 },
     { action: 'pause', duration: 700 },
-    { action: 'backspace', count: 14, speed: 30 },
+    { action: 'backspace', count: 13, speed: 30 },
     { action: 'pause', duration: 2000 },
     { action: 'type', text: '\nEm có cái kiểu nhẹ nhàng, thoáng đãng\nkhiến người ta thấy thoải mái, dễ chịu lạ thường.', speed: 90 },
     { action: 'pause', duration: 2500 },
@@ -276,11 +360,11 @@ const letterScript = [
     { action: 'type', text: '\n\nNụ cười của em—', speed: 100 },
     { action: 'pause', duration: 1200 },
     { action: 'type', text: '\nsáng đến mức có thể thắp sáng cả căn phòng.', speed: 80 },
-    { action: 'type', text: '\n(lúc này, anh lại thấy nó)', speed: 80 },
+    { action: 'type', text: '\nlúc này, anh lại thấy nó', speed: 80 },
     { action: 'pause', duration: 800 },
-    { action: 'backspace', count: 26, speed: 30 },
+    { action: 'backspace', count: 24, speed: 30 },
     { action: 'pause', duration: 2200 },
-    { action: 'type', text: 'Lúc em gọi cho anh với cái filter ngớ ngẩn đó—\nthì mọi thứ đang xảy ra xung quanh\ncũng chẳng còn quan trọng gì nữa.', speed: 90 },
+    { action: 'type', text: '\nLúc em gọi cho anh với cái filter ngớ ngẩn đó—\nthì mọi thứ đang xảy ra xung quanh\ncũng chẳng còn quan trọng gì nữa.', speed: 90 },
     { action: 'pause', duration: 2800 },
     { action: 'type', text: '\nBao nhiêu suy nghĩ, lo toan trong đầu\nbỗng tan biến như khói bay trong nắng sớm.', speed: 85 },
     { action: 'pause', duration: 2500 },
@@ -314,7 +398,7 @@ const letterScript = [
     { action: 'pause', duration: 1500 },
     { action: 'type', text: ' Lỡ thương em...', speed: 120 },
     { action: 'pause', duration: 1000 },
-    { action: 'backspace', count: 12, speed: 50 },
+    { action: 'backspace', count: 11, speed: 50 },
     { action: 'pause', duration: 800 },
     { action: 'type', text: 'Lỡ thương em\ngiống như nhìn một bông hoa\nnở rộ trong khu vườn\nmà anh không bao giờ được bước vào.', speed: 85 },
     { action: 'pause', duration: 3500 },
@@ -350,7 +434,7 @@ const letterScript = [
     { action: 'pause', duration: 2800 },
     { action: 'type', text: '\n\n(This one still makes me laugh because I didn\'t believe you for some reason haha)', speed: 80 },
     { action: 'pause', duration: 1500 },
-    { action: 'type', text: '\nCảm ơn em nha, Phương.', speed: 90 },
+    { action: 'type', text: '\n\nCảm ơn em nha, Phương.', speed: 90 },
     { action: 'pause', duration: 2500 },
     { action: 'type', text: '\n\nAnh thấy mình hên lắm mới tình cờ gặp được em.', speed: 80 },
     { action: 'pause', duration: 1000 },
@@ -370,7 +454,7 @@ const letterScript = [
     { action: 'pause', duration: 2800 },
     { action: 'type', text: '\nTrời ơi, nghe điên ghê hông?', speed: 100 },
     { action: 'pause', duration: 1200 },
-    { action: 'type', text: ' Hay khi em bệnh\nanh đem cái bịch quà chăm sóc qua cho em.', speed: 90 },
+    { action: 'type', text: '\nHay khi em bệnh\nanh đem cái bịch quà chăm sóc qua cho em.', speed: 90 },
     { action: 'pause', duration: 2500 },
     { action: 'type', text: '\n\nMấy chuyện đó,\nanh biết chắc sẽ không bao giờ quên được.', speed: 80 },
     { action: 'pause', duration: 1500 },
@@ -386,16 +470,16 @@ const letterScript = [
     { action: 'pause', duration: 2500 },
     { action: 'type', text: '\n\nKhông có tháng nào, tuần nào, hay ngày nào trôi qua\nmà em—', speed: 85 },
     { action: 'pause', duration: 2000 },
-    { action: 'type', text: '\nhay cái ly matcha freeze đáng ghét đó\n(ít đường, nhiều kem)—\nkhông lởn vởn trong đầu anh.', speed: 95 },
+    { action: 'type', text: '\nhay cái ly matcha freeze đáng ghét đó\nít đường, nhiều kem—\nkhông lởn vởn trong đầu anh.', speed: 95 },
     { action: 'pause', duration: 3000 },
     { action: 'type', text: '\n\nNói thiệt, anh đâu có mê matcha dữ vậy đâu.', speed: 80 },
     { action: 'pause', duration: 1500 },
     { action: 'type', text: '\nMà lâu lâu vẫn thấy muốn gọi,\nchỉ để nhớ lại mấy lần mua cho em.', speed: 90 },
     { action: 'pause', duration: 2800 },
     { action: 'type', text: '\n\nAnh cứ tự hỏi hoài\nkhông biết em có ổn không,\ncó vui không,\ncó ai lo cho em chưa.', speed: 95 },
-    { action: 'type', text: ' (mỗi ngày)', speed: 90 },
+    { action: 'type', text: ' mỗi ngày', speed: 90 },
     { action: 'pause', duration: 600 },
-    { action: 'backspace', count: 10, speed: 30 },
+    { action: 'backspace', count: 9, speed: 30 },
     { action: 'pause', duration: 2500 },
     { action: 'type', text: '\nAnh muốn biết em có ăn uống đàng hoàng không,\nchứ không phải theo cái chế độ ăn kiêng vớ vẩn mà em đâu có cần.', speed: 85 },
     { action: 'pause', duration: 3000 },
@@ -416,9 +500,9 @@ const letterScript = [
     { action: 'type', text: '\nDù sau này em có muốn\ncho anh góp mặt trong niềm vui đó hay không—\nthì cũng chẳng sao hết.', speed: 90 },
     { action: 'pause', duration: 3000 },
     { action: 'type', text: '\n\nVì tình cảm này là vô điều kiện.', speed: 80 },
-    { action: 'type', text: ' (dù đau)', speed: 100 },
+    { action: 'type', text: ' dù đau', speed: 100 },
     { action: 'pause', duration: 700 },
-    { action: 'backspace', count: 8, speed: 30 },
+    { action: 'backspace', count: 7, speed: 30 },
     { action: 'pause', duration: 1200 },
     { action: 'type', text: ' Một sự quan tâm không đòi hỏi gì hết—\nchỉ đơn thuần là trân trọng cái gì từng quý với em.', speed: 85 },
     { action: 'pause', duration: 3000 },
@@ -464,21 +548,6 @@ const letterScript = [
     { action: 'pause', duration: 1300 },
     { action: 'type', text: '\nanh mong là em thích mấy món quà khác anh tặng.', speed: 90 },
     { action: 'pause', duration: 2800 },
-    { action: 'type', text: '\n\nCó lần em nhắc thoáng qua,\nchỉ một lần thôi,\ncách đây mấy tháng,\nrằng em có muốn anh ráp cho em một cái bàn phím.', speed: 85 },
-    { action: 'pause', duration: 3000 },
-    { action: 'type', text: '\nNên anh nghĩ,\nđó sẽ là món quà độc nhất và hoàn hảo nhất dành cho em.', speed: 80 },
-    { action: 'pause', duration: 2500 },
-    { action: 'type', text: '\nNó là một phần thế giới của anh,\nvà anh nghĩ em sẽ thích nó.', speed: 90 },
-    { action: 'pause', duration: 2500 },
-    { action: 'type', text: '\n\nAnh chọn cho em một bộ kit bàn phím\ndễ hiểu, dễ tùy chỉnh—\nđể em lúc nào cũng có thể thay đổi cảm giác gõ hay âm thanh\nnếu muốn cái gì đó khác đi.', speed: 85 },
-    { action: 'pause', duration: 3000 },
-    { action: 'type', text: '\nBiết đâu nó sẽ trở thành một sở thích mới vui vẻ cho em.', speed: 90 },
-    { action: 'pause', duration: 2800 },
-    { action: 'type', text: '\n\nBản thân cái bàn phím đã rất xịn rồi,', speed: 80 },
-    { action: 'type', text: ' (hy vọng em thích)', speed: 85 },
-    { action: 'pause', duration: 800 },
-    { action: 'backspace', count: 18, speed: 30 },
-    { action: 'pause', duration: 2000 },
     { action: 'type', text: '\nHoa thì ai cũng có thể tặng.', speed: 90 },
     { action: 'pause', duration: 1500 },
     { action: 'type', text: ' Nhưng không phải ai cũng tạo được một trải nghiệm có cảm xúc.', speed: 85 },
@@ -494,59 +563,69 @@ const letterScript = [
     { action: 'type', text: '\nVì bất chấp mọi thứ,\nanh vẫn đã gặp được em.', speed: 95 },
     { action: 'pause', duration: 3500 },
     { action: 'type', text: '\n\nĐây có lẽ sẽ là một trong những hành động yêu thương cuối cùng', speed: 80 },
-    { action: 'type', text: ' (khó thật đấy)', speed: 90 },
+    { action: 'type', text: ' khó thật đấy', speed: 90 },
     { action: 'pause', duration: 700 },
-    { action: 'backspace', count: 14, speed: 30 },
+    { action: 'backspace', count: 13, speed: 30 },
     { action: 'type', text: ' anh làm cho em—', speed: 80 },
     { action: 'pause', duration: 1500 },
     { action: 'type', text: '\nkhông phải vì anh không muốn làm gì nữa,\nmà là để em có thể bay thật xa, thật tự do.', speed: 85 },
     { action: 'pause', duration: 3000 },
     { action: 'type', text: '\n\nNói vậy nghĩa là\ncó lẽ anh sẽ không chủ động liên lạc với em nữa', speed: 90 },
     { action: 'pause', duration: 1500 },
-    { action: 'type', text: '\n(anh cũng không chắc giữ nổi lời hứa đó đâu)', speed: 70 },
+    { action: 'type', text: '\nanh cũng không chắc giữ nổi lời hứa đó đâu', speed: 70 },
     { action: 'pause', duration: 1500 },
     { action: 'type', text: '\nnhưng nếu em nhắn,\nanh sẽ luôn trả lời.', speed: 100 },
     { action: 'pause', duration: 4000 },
-    { action: 'type', text: '\n\nAnh yêu', speed: 100 },
+    { action: "type", text: '\n\nTrước khi kết thúc,\n\nanh muốn nói với em\nlà tiếng Việt của em đẹp vô cùng.\nCó mấy điều\n\nnó diễn tả được\n\nmà tiếng Anh chịu thua.', speed: 110 },
+    { action: "pause", "duration": 2000 },
+    { action: 'type', text: 'Từ anh thích nhất\n\nlà thương —\n\ncái tình muốn ôm hết nỗi buồn,\n\nnỗi đau của người mình thương,\n\ngánh giùm để họ khỏi phải chịu.', speed: 100 },
     { action: 'pause', duration: 2000 },
-    { action: 'backspace', count: 7, speed: 40 },
-    { action: 'pause', duration: 1200 },
-    { action: 'type', text: 'Xin lỗi...', speed: 90 },
-    { action: 'pause', duration: 1500 },
-    { action: 'backspace', count: 10, speed: 40 },
-    { action: 'pause', duration: 800 },
-    { action: 'type', text: 'không, anh không xin lỗi.', speed: 85 },
+    { action: 'type', text: 'Cái tình đó\n\nanh lúc nào cũng có…\n\nchỉ là trước giờ\n\nchưa biết gọi tên.', speed: 90 },
     { action: 'pause', duration: 2000 },
-    { action: 'backspace', count: 25, speed: 30 },
-    { action: 'pause', duration: 1500 },
-    { action: 'type', text: 'Anh thương em nhiều hơn em nghĩ,\n— Sam', speed: 110 }
+    { action: 'type', text: 'Vậy nên, thêm một lần nữa —\n\nsinh nhật vui vẻ nha, Phương.\n\nAnh thương em.', speed: 85 }
 ];
 
     const startTypingLetter = async () => {
         await typeHesitantly(noteTextElement, letterScript);
     };
 
-    const eraseText = (element, interval = 25) => {
+    const eraseText = (element, baseInterval = 25) => {
         return new Promise(resolve => {
-            let text = element.textContent;
-            currentTypeInterval = setInterval(() => {
-                if (text.length > 0) {
-                    text = text.slice(0, -1);
-                    element.textContent = text;
+            const isFormElement = element.tagName === 'TEXTAREA' || element.tagName === 'INPUT';
+            const eraseCharacter = () => {
+                const currentText = isFormElement ? element.value : element.textContent;
+                
+                if (currentText.length > 0) {
+                    if (isFormElement) {
+                        element.value = currentText.slice(0, -1);
+                    } else {
+                        element.textContent = currentText.slice(0, -1);
+                    }
+                    if (isFormElement) {
+                        element.scrollTop = element.scrollHeight;
+                    }
+                    playDeletingSound();
+                    const variation = Math.random() * 40 - 20;
+                    const nextInterval = Math.max(5, baseInterval + variation);
+                    
+                    currentTypeInterval = setTimeout(eraseCharacter, nextInterval);
                 } else {
-                    clearInterval(currentTypeInterval);
                     currentTypeInterval = null;
                     resolve();
                 }
-            }, interval);
+            };
+            
+            eraseCharacter();
         });
     };
 
     const startInstagramSequence = async () => {
         const chatContainer = document.getElementById('igChatContainer');
         const messages = [
-            "Now that you got to experience a bit of my thought process, I wanted to give you a space to share your thoughts",
-            "No pressure at all, I won't be able to see anything you write unless you choose to share it with me ✨"
+            "Giờ thì em đã nhìn thấy bên trong tâm trí anh rồi, Không gian này là của em",
+            "Hét ra. Giận dữ. Ghét anh. Yêu anh. Nói gì cũng được – Chỉ có em thấy thôi",
+            "Tin anh đi, anh sẽ muốn đọc từng chữ nếu có thể. Ngay khi em rời đi, mọi thứ sẽ quay lại từ đầu",
+            "Nếu em muốn lưu lá thư trước khi đi, quay lại bằng nút trên cùng bên trái và nhấn lưu",
         ];
         
         for (const msg of messages) {
@@ -557,6 +636,17 @@ const letterScript = [
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
+        const specialMessageDiv = document.createElement('div');
+        specialMessageDiv.className = 'ig-message received special-message';
+        specialMessageDiv.innerHTML = `
+            <div class="ig-message-bubble">
+                <p>Phần cuối của món quà này, em có thể mở ra ở đây</p>
+                <button id="unlockGiftBtn" class="unlock-gift-btn">Mở</button>
+            </div>
+        `;
+        chatContainer.appendChild(specialMessageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        document.getElementById('unlockGiftBtn').addEventListener('click', showUnlockModal);
 
         document.getElementById('notesBackBtn').style.visibility = 'visible';
         setupInstagramInput();
@@ -584,6 +674,7 @@ const letterScript = [
 
     const sendMessage = () => {
         const text = messageInput.value.trim();
+        logEvent('ig_message', { length: text.length });
         if (!text) return;
 
         sendButton.style.transform = 'scale(0.8) rotate(15deg)';
@@ -670,19 +761,137 @@ const letterScript = [
     const goBackToLetter = () => {
         if(isAutomating) return;
         showScene('notes');
+        logEvent('sequence_progress', { stage: 'notes_screen' });
     };
 
     const goBackToInstagram = () => {
         if(isAutomating) return;
         showScene('instagram');
+        logEvent('sequence_progress', { stage: 'instagram_screen' });
         document.getElementById('igMessageInput').focus();
     };
+    const showUnlockModal = () => {
+        const modal = document.getElementById('unlockModal');
+        modal.style.display = 'flex';
+        document.getElementById('closeModal').onclick = () => {
+            modal.style.display = 'none';
+        };
+        window.onclick = (event) => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        };
+        document.getElementById('submitCode').onclick = () => {
+            const code = document.getElementById('modalCodeInput').value.trim();
+            const errorMessage = document.getElementById('modalErrorMessage');
+            if (code === 'hit' || code === 'Hit') {
+                unlockSound.play().catch(() => {});
+                modal.style.display = 'none';
+                document.getElementById('modalCodeInput').value = '';
+                errorMessage.style.display = 'none';
+                showFinalMessageSequence();
+                logEvent('gift_unlocked', { codeUsed: code });
+            } else {
+                errorSound.play().catch(() => {});
+                logEvent('gift_failed', { codeUsed: code });
+                errorMessage.style.display = 'block';
+                document.getElementById('modalCodeInput').value = '';
+            }
+        };
+        document.getElementById('modalCodeInput').onkeypress = (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('submitCode').click();
+            }
+        };
+    };
 
+
+    const showFinalMessageSequence = async () => {
+        lockInteractions();
+        scenes.instagram.classList.remove('active');
+        await delay(100);
+        showScene('typing');
+        const typedElement = document.getElementById('typingText');
+        typedElement.textContent = '';
+        typedElement.parentElement.classList.add('typing');
+        const finalMessages = [
+            "Em biết không, trải nghiệm này Không chỉ là về bức thư Mà là để cho em thấy em đã có ý nghĩa với anh thế nào trong khoảng thời gian ngắn ngủi ấy Không phải vì tình yêu Mà là để chứng minh em đã sai",
+            "Hồi đó em từng nói với anh rằng ý kiến của em có lẽ sẽ không bao giờ thay đổi Không biết em còn nhớ không Nhưng từng câu chữ, từng khoảng lặng, từng khoảnh khắc… đều được anh viết ra với em trong tâm trí",
+            "Em có thể không có trí nhớ như anh, nhưng ít nhất em nên nhớ điều này…",
+            "Vì thời gian em dành đọc tất cả những gì anh muốn nói Anh sẽ tặng em một điều cuối cùng Nhưng phải nói trước… món quà này hơi ích kỷ một chút Bởi vì em không thể dùng nó một mình, hay với bất kỳ người bạn nào khác",
+            "Đó là một tấm vé, đến bất kỳ nhà hàng nào em chọn Nhưng em chỉ có thể dùng nó với anh thôi",
+            "Để biết đâu một ngày em muốn, chúng ta có thể gặp lại, ngồi cùng nhau nói chuyện, lại bàn tán đủ thứ chuyện vô tư hàng giờ, như hồi mới quen và những lần sau đó nữa",
+            "Anh biết có thể chẳng bao giờ thành sự thật Nhưng nếu em từng muốn quay ngược thời gian với anh… thì tấm vé này sẽ là chìa khóa Để quên hết mọi thứ và bắt đầu lại",
+            "Anh biết đây không phải vé đi xem Matt Rife – và anh biết em chắc sẽ thích cái đó. Nhưng biết đâu một ngày nào đó, nó cũng có thể là một lựa chọn",
+            "À này, mong em đừng ngại khi anh dịch hết mấy cái này. Em không tưởng tượng nổi cái cực khổ của việc phải chỉnh sửa đi chỉnh sửa lại hàng giờ qua mấy ngày trời, mà vẫn không chắc đã truyền tải đúng ý mình muốn. Nhưng thà vậy còn hơn để nguyên tiếng Anh. Anh hiểu cái khó chịu khi bị hiểu lầm và không hiểu ngôn ngữ của đối phương, nên anh nghĩ đây vẫn là lựa chọn tốt hơn. Dù vậy anh cũng đang học được nhiều lắm và vẫn đang tiếp tục mỗi ngày",
+            "Lần cuối cùng… Chúc sinh nhật vui vẻ, Phương. Nếu em cần bất cứ điều gì, đừng ngần ngại nói với anh. Những khó khăn của em sẽ không bao giờ là gánh nặng"
+        ];
+        for (let i = 0; i < finalMessages.length; i++) {
+            const message = finalMessages[i];
+            await typeText(typedElement, message, 60);
+            await delay(2000);
+            if (i < finalMessages.length - 1) {
+                await eraseText(typedElement, 15);
+                await delay(500);
+            }
+        }
+        
+        typedElement.parentElement.classList.remove('typing');
+        await delay(1000);
+        const finalMessage = "\nCảm ơn em đã trải nghiệm điều này cùng anh. Anh hy vọng nó đã giúp chúng ta gần nhau hơn, dù chỉ trong chốc lát";
+        await typeText(typedElement, finalMessage, 60);
+        await delay(3000);
+        showScene('instagram');
+        await logEvent('sequence_progress', { stage: 'instagram_screen' });
+        await delay(1000);
+        await addImageMessageToChat();
+        
+        unlockInteractions();
+    };
+
+    const addImageMessageToChat = async () => {
+        const chatContainer = document.getElementById('igChatContainer');
+        const imageMessageDiv = document.createElement('div');
+        imageMessageDiv.className = 'ig-message received';
+        imageMessageDiv.innerHTML = `
+            <div class="ig-message-bubble">
+                <img src="./ticket.png" alt="Restaurant Ticket" style="max-width: 200px; border-radius: 10px; cursor: pointer;" onclick="downloadImage()" />
+                <p>Chỉ cần chạm vào vé để lưu lại</p>
+            </div>
+        `;
+        chatContainer.appendChild(imageMessageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        window.downloadImage = function() {
+            const link = document.createElement('a');
+            link.href = './sam.jpg';
+            link.download = 'restaurant_ticket_sam.jpg';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+        const unlockGiftBtn = document.getElementById('unlockGiftBtn');
+        if (unlockGiftBtn) {
+            unlockGiftBtn.disabled = true;
+            unlockGiftBtn.style.opacity = '0.5';
+            unlockGiftBtn.style.cursor = 'not-allowed';
+            unlockGiftBtn.textContent = 'Gift Unlocked';
+        }
+    };
+
+    const downloadPDF = () => {
+        const link = document.createElement('a');
+        link.href = './Phuong_Letter.pdf';
+        link.download = 'Phuong_Letter.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const init = () => {
         window.checkCode = checkCode;
         window.goBackToLetter = goBackToLetter;
         window.goBackToInstagram = goBackToInstagram;
+        window.downloadPDF = downloadPDF;
         
         const particlesContainer = document.getElementById('particles');
         for (let i = 0; i < 50; i++) {
@@ -696,6 +905,10 @@ const letterScript = [
         }
 
         codeInput.addEventListener('keypress', (e) => e.key === 'Enter' && checkCode());
+        const saveNoteBtn = document.getElementById('saveNoteBtn');
+        if (saveNoteBtn) {
+            saveNoteBtn.addEventListener('click', downloadPDF);
+        }
 
         initMusicPlayer();
         showScene('lockbox');
