@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (error) console.error("Supabase log error:", error);
 }
 
-
+    let currentTypeInterval = null;
     let isAutomating = false;
     let isMusicPlaying = false;
     let audioElement = null;
@@ -68,6 +68,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.remove('disable-interactions');
         noteTextElement.style.pointerEvents = 'auto';
     };
+    const playTypingSound = () => {
+        typingSound.currentTime = 0;
+        typingSound.play().catch(e => console.log("Typing sound play failed:", e));
+    };
+    const playDeletingSound = () => {
+        deletingSound.currentTime = 0;
+        deletingSound.play().catch(e => console.log("Deleting sound play failed:", e));
+    };
 
     const typeText = (element, text, baseInterval = 50) => {
         return new Promise(resolve => {
@@ -116,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (isFormElement) {
                             element.scrollTop = element.scrollHeight;
                         }
+                        playDeletingSound();
                         const variation = Math.random() * 40 - 20; variation
                         const nextInterval = Math.max(5, baseInterval + variation);
                         
@@ -206,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const checkCode = async () => {
         if (isAutomating) return;
+        isAutomating = true; // Prevent multiple calls immediately
         const code = normalize(codeInput.value);
 
         if (code === 'trai tim' || code === 'heart') {
@@ -218,6 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
             errorMessage.classList.add('show');
             codeInput.value = '';
             setTimeout(() => errorMessage.classList.remove('show'), 2000);
+            isAutomating = false; // Reset flag for failed attempts
         }
     };
     
@@ -237,25 +248,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const typedElement = document.getElementById('typingText');
         const introMessages = [
             "Phương nè…",
-            "Anh hy vọng hôm nay em được bao quanh bởi những người em yêu và những người làm em cảm thấy được yêu trở lại.",
-            "Anh thích tưởng tượng rằng em đã nhận được tất cả những gì em mong muốn — và hơn thế nữa.",
-            "Việc chọn món quà đúng cho em thật sự không dễ chút nào.",
-            "Cuối cùng, anh chọn một thứ để em có thể dùng mỗi ngày — khi học, khi chơi game — thứ mà em có thể tùy chỉnh bất cứ lúc nào nếu một ngày muốn đổi mới.",
-            "Anh nhớ từ rất lâu trước đây, em từng nói muốn anh ráp cho em một cái bàn phím. Vậy nên… đây là nó. Anh mong nó mang lại cho em nhiều niềm vui như khi anh lắp từng phím, từng ốc vít.",
-            "Anh cố tình chọn một bộ kit thật dễ để em có thể thay đổi mọi thứ một cách đơn giản, nếu em muốn.",
-            "Nhưng đó không phải là món quà duy nhất anh từng nghĩ đến.",
-            "Anh sợ nếu làm quá nhiều, nó sẽ thành gượng gạo… hoặc mất đi sự tự nhiên. Nên anh giữ mọi thứ lại, để vừa đủ.",
-            "Anh cũng muốn viết vài lời để động viên em… nhưng lại sợ, nếu em đã mệt mỏi vì nghe anh nói, thì nó sẽ trở thành gánh nặng.",
-            "Vậy nên, anh để nó trong một cuốn sách.",
-            "Một cuốn sách đã thay đổi cách anh sống. Anh cố tình đặt mã mở khóa dựa trên một điều trong đó — để nếu em tìm ra, là vì chính sự tò mò và những gì em học được đã dẫn em đến đây, chứ không phải vì anh ép em phải đọc lá thư này.",
-            "Nếu em đang đọc những dòng này… thì anh đã đúng khi tin rằng em sẽ tự tìm đến.",
-            "Nhưng mà… vài câu chữ in trên giấy sẽ quá đơn giản với một người như anh. Anh vốn dĩ đã quen sống hơi ‘quá tay’ một chút, nên mong em tha thứ.",
+            "Anh hy vọng hôm nay em được bên cạnh những người em yêu thương, và những người làm em thấy được yêu thương",
+            "Anh thích tưởng tượng rằng em đã nhận được tất cả những gì em mong muốn — và hơn thế nữa",
+            "Việc chọn món quà đúng cho em thật sự không dễ chút nào",
+            "Cuối cùng, anh chọn một thứ để em có thể dùng mỗi ngày — khi học, khi chơi game — thứ mà em có thể tùy chỉnh bất cứ lúc nào nếu một ngày muốn đổi mới",
+            "Anh nhớ từ rất lâu trước đây, em từng nói muốn anh ráp cho em một cái bàn phím. Vậy nên… đây là nó. Anh mong nó mang lại cho em nhiều niềm vui như khi anh lắp từng phím, từng ốc vít",
+            "Anh cố tình chọn một bộ kit thật dễ để em có thể thay đổi mọi thứ một cách đơn giản, nếu em muốn",
+            "Nhưng đó không phải là món quà duy nhất anh từng nghĩ đến",
+            "Anh sợ nếu làm quá nhiều, nó sẽ thành gượng gạo… hoặc mất đi sự tự nhiên. Nên anh giữ mọi thứ lại, để vừa đủ",
+            "Anh cũng muốn viết vài lời để động viên em… nhưng lại sợ, nếu em đã mệt mỏi vì nghe anh nói, thì nó sẽ trở thành gánh nặng",
+            "Vậy nên, anh để nó trong một cuốn sách",
+            "Một cuốn sách đã thay đổi cách anh sống. Anh cố tình đặt mã mở khóa dựa trên một điều trong đó — để nếu em tìm ra, là vì chính sự tò mò và những gì em học được đã dẫn em đến đây, chứ không phải vì anh ép em phải đọc lá thư này",
+            "Nếu em đang đọc những dòng này… thì anh đã đúng khi tin rằng em sẽ tự tìm đến",
+            "Nhưng mà… vài câu chữ in trên giấy sẽ quá đơn giản với một người như anh. Anh vốn dĩ đã quen sống hơi ‘quá tay’ một chút, nên mong em tha thứ",
             "Anh nghĩ… thay vì chỉ đọc lời anh viết, sao em không nhìn thấy chúng được tạo ra ngay trước mắt mình?",
-            "Không gì thân mật hơn việc được ở bên trong suy nghĩ của ai đó khi họ nghĩ về mình.",
-            "Vậy nên, nếu em đồng ý, anh sẽ viết cho em một lá thư — và nếu ở lại tới cuối, sẽ có một bất ngờ đang đợi.",
-            "Sẽ mất một chút thời gian… nên hãy tìm một chỗ yên tĩnh, riêng tư, thoải mái để đọc những gì anh đã cất trong lòng bấy lâu.",
-            "Trang web này đang bật cho em một bài hát nền — bài mà từ lâu em từng nói là thích. Anh đã giữ lại tên nó… phòng khi cần đến, và hôm nay chính là lúc đó.",
-            "Nếu muốn, em có thể tắt nhạc bằng cách bấm vào chiếc đĩa than ở góc dưới bên phải."
+            "Không gì thân mật hơn việc được ở bên trong suy nghĩ của ai đó khi họ nghĩ về mình",
+            "Vậy nên, nếu em đồng ý, anh sẽ viết cho em một lá thư — và nếu ở lại tới cuối, sẽ có một bất ngờ đang đợi",
+            "Sẽ mất một chút thời gian… nên hãy tìm một chỗ yên tĩnh, riêng tư, thoải mái để đọc những gì anh đã cất trong lòng bấy lâu",
+            "Trang web này đang bật cho em một bài hát nền — bài mà từ lâu em từng nói là thích. Anh đã giữ lại tên nó… phòng khi cần đến, và hôm nay chính là lúc đó",
+            "Nếu muốn, em có thể tắt nhạc bằng cách bấm vào chiếc đĩa than ở góc dưới bên phải"
         ];
         typedElement.parentElement.classList.add('typing');
 
@@ -263,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await typeText(typedElement, message, 60);
             await delay(3000);
             if (message !== introMessages[introMessages.length - 1]) {
-               await eraseText(typedElement, 20);
+               await eraseText(typedElement, 15);
                await delay(500);
             }
         }
@@ -595,6 +606,7 @@ const letterScript = [
                     if (isFormElement) {
                         element.scrollTop = element.scrollHeight;
                     }
+                    playDeletingSound();
                     const variation = Math.random() * 40 - 20;
                     const nextInterval = Math.max(5, baseInterval + variation);
                     
