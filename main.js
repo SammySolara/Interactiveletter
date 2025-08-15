@@ -44,6 +44,115 @@ document.addEventListener('DOMContentLoaded', () => {
     const vinylModal = document.getElementById('vinylModal');
     const playPauseBtn = document.getElementById('playPauseBtn');
 
+    
+    const songs = [
+        {
+            title: "Thuỷ Triều",
+            artist: "Quang Hùng MasterD",
+            file: "./songs/thuy/ThuỷTriều.mp3",
+            artwork: "./songs/thuy/8474eb9fd1a3aa78b974b4c104ff45fc.jpg"
+        },
+        {
+            title: "Mùa thu cho em",
+            artist: "Hà Anh Tuấn",
+            file: "./songs/anh/Mùa thu cho em.mp3",
+            artwork: "./songs/anh/maxresdefault.jpg"
+        },
+        {
+            title: "Hẹn một mai",
+            artist: "Bùi Anh Tuấn",
+            file: "./songs/bui/Hẹn một mai  Bùi Anh Tuấn.mp3",
+            artwork: "./songs/bui/maxresdefault.jpg"
+        },
+        {
+            title: "Em Dạo Này",
+            artist: "Ngọt",
+            file: "./songs/em/Em Dạo Này -  Ngọt [ lyrics - edit ].mp3",
+            artwork: "./songs/em/fd29480a6ae350d4d8de51c066356761.640x640x1.jpg"
+        },
+        {
+            title: "Tháng Tư Là Lời Nói Dối Của Em",
+            artist: "Hà Anh Tuấn",
+            file: "./songs/Ha/Hà Anh Tuấn - Tháng Tư Là Lời Nói Dối Của Em (Official MV).mp3",
+            artwork: "./songs/Ha/hq720.jpg"
+        },
+        {
+            title: "Điều Buồn Nhất",
+            artist: "Kai Đinh",
+            file: "./songs/kai/KAI ĐINH l ĐIỀU BUỒN NHẤT  OFFICIAL LYRIC VIDEO.mp3",
+            artwork: "./songs/kai/50e613e21b499290633d17cff0776e61_1489728059.jpg"
+        },
+        {
+            title: "Có Chàng Trai Viết Lên Cây",
+            artist: "Phan Mạnh Quỳnh",
+            file: "./songs/phan/Có Chàng Trai Viết Lên Cây - Phan Mạnh Quỳnh  AUDIO LYRIC OFFICIAL.mp3",
+            artwork: "./songs/phan/congly-vn_co-chang-trai-viet-len-cay-cung-moi-tinh-mat-biec-hinh-anh1636716080.jpg"
+        }
+    ];
+
+    let currentSongIndex = 0;
+    let lastClickTime = 0;
+    const doubleClickThreshold = 300;
+
+    const handleVinylModalClick = () => {
+        const currentTime = new Date().getTime();
+        const timeDiff = currentTime - lastClickTime;
+        
+        console.log('Vinyl modal clicked', currentTime, timeDiff);
+        
+        if (timeDiff < doubleClickThreshold) {
+
+            console.log('Double click detected, cycling song');
+            cycleSong();
+        } else {
+            console.log('Single click registered');
+        }
+        
+        lastClickTime = currentTime;
+    };
+
+
+    const cycleSong = () => {
+        console.log('cycleSong called, currentSongIndex:', currentSongIndex);
+        
+
+        currentSongIndex = (currentSongIndex + 1) % songs.length;
+        const nextSong = songs[currentSongIndex];
+        
+        console.log('New song index:', currentSongIndex, 'Title:', nextSong.title);
+        
+
+        document.getElementById('songTitle').textContent = nextSong.title;
+        document.getElementById('songArtist').textContent = nextSong.artist;
+        
+
+        const vinylArts = document.querySelectorAll('.vinyl-art, .vinyl-modal-art');
+        vinylArts.forEach(art => {
+            art.style.backgroundImage = `url('${nextSong.artwork}')`;
+        });
+        
+
+        if (isMusicPlaying) {
+            console.log('Music is playing, pausing and loading next song');
+            if (audioElement) {
+                audioElement.pause();
+            }
+            audioElement = new Audio(nextSong.file);
+            audioElement.loop = false;
+            audioElement.addEventListener('ended', cycleSong);
+            fadeInMusic();
+        } else {
+
+            console.log('Music is not playing, loading next song');
+            if (audioElement) {
+                audioElement.pause();
+            }
+            audioElement = new Audio(nextSong.file);
+            audioElement.loop = false;
+            audioElement.addEventListener('ended', cycleSong);
+            audioElement.volume = 0;
+        }
+    };
 
     const delay = ms => new Promise(res => setTimeout(res, ms));
 
@@ -156,12 +265,60 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const initMusicPlayer = () => {
-        document.getElementById('songTitle').textContent = 'Thuy Trieu';
-        document.getElementById('songArtist').textContent = 'Quang Hung MasterD';
-        audioElement = new Audio('./ThuỷTriều.mp3');
-        audioElement.loop = true;
+
+        const currentSong = songs[currentSongIndex];
+        document.getElementById('songTitle').textContent = currentSong.title;
+        document.getElementById('songArtist').textContent = currentSong.artist;
+        
+
+        audioElement = new Audio(currentSong.file);
+        audioElement.loop = false;
         audioElement.volume = 0;
-        vinylFab.addEventListener('click', toggleMusic);
+        
+   
+        audioElement.addEventListener('ended', cycleSong);
+        
+        
+        vinylFab.addEventListener('click', (e) => {
+           
+            e.stopPropagation();
+            
+            const currentTime = new Date().getTime();
+            const timeDiff = currentTime - lastClickTime;
+            
+            console.log('Vinyl FAB clicked', currentTime, timeDiff);
+            
+            if (timeDiff < doubleClickThreshold) {
+              
+                console.log('Double click detected on FAB, cycling song');
+                cycleSong();
+            } else {
+                
+                console.log('Single click on FAB, toggling music and opening modal');
+                toggleMusic();
+                vinylModal.style.display = 'flex';
+            }
+            
+            lastClickTime = currentTime;
+        });
+        
+        
+        document.getElementById('closeModalBtn').addEventListener('click', () => {
+            vinylModal.style.display = 'none';
+        });
+        
+      
+        vinylModal.addEventListener('click', (e) => {
+            if (e.target === vinylModal) {
+                vinylModal.style.display = 'none';
+            }
+        });
+        
+      
+        playPauseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMusic();
+        });
     }; 
 
     const toggleMusic = () => {
@@ -206,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const checkCode = async () => {
         if (isAutomating) return;
-        isAutomating = true; // Prevent multiple calls immediately
+        isAutomating = true;
         const code = normalize(codeInput.value);
 
         if (code === 'trai tim' || code === 'heart') {
@@ -219,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
             errorMessage.classList.add('show');
             codeInput.value = '';
             setTimeout(() => errorMessage.classList.remove('show'), 2000);
-            isAutomating = false; // Reset flag for failed attempts
+            isAutomating = false;
         }
     };
     
@@ -257,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
             "Vậy nên, nếu em đồng ý, anh sẽ viết cho em một lá thư — và nếu ở lại tới cuối, sẽ có một bất ngờ đang đợi",
             "Sẽ mất một chút thời gian… nên hãy tìm một chỗ yên tĩnh, riêng tư, thoải mái để đọc những gì anh đã cất trong lòng bấy lâu",
             "Trang web này đang bật cho em một bài hát nền — bài mà từ lâu em từng nói là thích. Anh đã giữ lại tên nó… phòng khi cần đến, và hôm nay chính là lúc đó",
-            "Nếu muốn, em có thể tắt nhạc bằng cách bấm vào chiếc đĩa than ở góc dưới bên phải"
+            "Nếu muốn, bạn có thể tắt nhạc bằng cách nhấp vào đĩa nhạc ở góc dưới bên phải hoặc nhấp đúp để đổi bài"
         ];
         typedElement.parentElement.classList.add('typing');
 
@@ -292,7 +449,7 @@ const letterScript = [
     { action: 'pause', duration: 400 },
     { action: 'type', text: '\nAnh mong hôm nay là một ngày thật đặc biệt với em.', speed: 90 },
     { action: 'pause', duration: 2000 },
-    { action: 'type', text: '\n\nThiệt tình anh cũng chẳng biết người ta thường làm gì trong ngày sinh nhật—', speed: 85 },
+    { action: 'type', text: '\n\nThiệt tình anh cũng chẳng biết người ta thường làm gì trong ngày sinh nhật', speed: 85 },
     { action: 'pause', duration: 1200 },
     { action: 'type', text: '\nanh thì… có bao giờ mừng sinh nhật mình đâu.', speed: 100 },
     { action: 'type', text: ' cũng chẳng cần thiết', speed: 80 },
@@ -305,7 +462,7 @@ const letterScript = [
     { action: 'pause', duration: 2000 },
     { action: 'type', text: '\nAnh thấy đây là phần ý nghĩa nhất trong món quà\nmà có thể tồn tại mãi với thời gian.', speed: 75 },
     { action: 'pause', duration: 2500 },
-    { action: 'type', text: '\n\nAnh thật sự muốn nói nhiều lắm—', speed: 80 },
+    { action: 'type', text: '\n\nAnh thật sự muốn nói nhiều lắm', speed: 80 },
     { action: 'type', text: ' quá nhiều, thật ra', speed: 90 },
     { action: 'pause', duration: 600 },
     { action: 'backspace', count: 19, speed: 30 },
@@ -319,9 +476,9 @@ const letterScript = [
     { action: 'type', text: '\nMột trong số đó là:\nem từng là một trong những nguồn vui chính\ncủa anh hồi anh mới đặt chân tới Việt Nam.', speed: 85 },
     { action: 'type', text: ' và vẫn là', speed: 100 },
     { action: 'pause', duration: 800 },
-    { action: 'backspace', count: 9, speed: 30 },
+    { action: 'backspace', count: 10, speed: 30 },
     { action: 'pause', duration: 2500 },
-    { action: 'type', text: '\n\nLúc đó anh thấy mình hơi ngợp và lạc lõng—', speed: 90 },
+    { action: 'type', text: '\n\nLúc đó anh thấy mình hơi ngợp và lạc lõng', speed: 90 },
     { action: 'pause', duration: 1200 },
     { action: 'type', text: '\nmà nói thật,\ntrước khi đến đây,\nanh cũng trải qua khá nhiều chuyện,\nchỉ là anh ít khi kể ra thôi.', speed: 95 },
     { action: 'pause', duration: 2800 },
@@ -333,9 +490,9 @@ const letterScript = [
     { action: 'pause', duration: 2500 },
     { action: 'type', text: '\n\nMặt khác,\nnó biến anh thành một bức tranh vá chằng vá đụp\ntừ từng người mà anh từng thấy dễ gần, dễ mến—', speed: 80 },
     { action: 'pause', duration: 1500 },
-    { action: 'backspace', count: 51, speed: 30 },
+    { action: 'backspace', count: 46, speed: 30 },
     { action: 'pause', duration: 1000 },
-    { action: 'type', text: '\nghép từ từng người anh từng thấy dễ gần, dễ mến—', speed: 75 },
+    { action: 'type', text: 'ghép từ từng người anh từng thấy dễ gần, dễ mến—', speed: 75 },
     { action: 'pause', duration: 1200 },
     { action: 'type', text: '\ntới mức, anh dần quên mất:\nphần nào mới thật sự là của riêng mình.', speed: 90 },
     { action: 'pause', duration: 3000 },
@@ -353,11 +510,11 @@ const letterScript = [
     { action: 'type', text: '\n\nNụ cười của em—', speed: 100 },
     { action: 'pause', duration: 1200 },
     { action: 'type', text: '\nsáng đến mức có thể thắp sáng cả căn phòng.', speed: 80 },
-    { action: 'type', text: '\nlúc này, anh lại thấy nó', speed: 80 },
+    { action: 'type', text: ' lúc này, anh lại thấy nó', speed: 80 },
     { action: 'pause', duration: 800 },
-    { action: 'backspace', count: 24, speed: 30 },
+    { action: 'backspace', count: 25, speed: 30 },
     { action: 'pause', duration: 2200 },
-    { action: 'type', text: '\nLúc em gọi cho anh với cái filter ngớ ngẩn đó—\nthì mọi thứ đang xảy ra xung quanh\ncũng chẳng còn quan trọng gì nữa.', speed: 90 },
+    { action: 'type', text: '\nLúc em gọi cho anh với cái filter ngớ ngẩn đó—thì mọi thứ đang xảy ra xung quanh\ncũng chẳng còn quan trọng gì nữa.', speed: 90 },
     { action: 'pause', duration: 2800 },
     { action: 'type', text: '\nBao nhiêu suy nghĩ, lo toan trong đầu\nbỗng tan biến như khói bay trong nắng sớm.', speed: 85 },
     { action: 'pause', duration: 2500 },
@@ -365,21 +522,21 @@ const letterScript = [
     { action: 'pause', duration: 1500 },
     { action: 'type', text: ' Bình yên với người như anh—\nkhó kiếm lắm.', speed: 90 },
     { action: 'pause', duration: 2800 },
-    { action: 'type', text: '\n\nLúc nào đầu óc cũng chạy theo chuyện kế tiếp,\nviệc kế tiếp, mục tiêu kế tiếp…', speed: 100 },
+    { action: 'type', text: '\n\nLúc nào đầu óc cũng chạy theo chuyện kế tiếp, việc kế tiếp, mục tiêu kế tiếp…', speed: 100 },
     { action: 'pause', duration: 1800 },
-    { action: 'type', text: '\nAnh cứ rượt theo sự thật, rượt theo cái mới,\ncứ tưởng chỉ cần vậy là đủ để gọi đó là “nhà”.', speed: 85 },
+    { action: 'type', text: '\nAnh cứ rượt theo sự thật, rượt theo cái mới,\ncứ tưởng chỉ cần vậy là đủ để gọi đó là "nhà".', speed: 85 },
     { action: 'pause', duration: 2500 },
-    { action: 'type', text: '\nNhưng cuối cùng,\nchính anh lại biến cái gọi là “nhà” đó\nthành cái lồng mà anh chỉ muốn trốn khỏi.', speed: 90 },
+    { action: 'type', text: '\nNhưng cuối cùng,\nchính anh lại biến cái gọi là "nhà" đó\nthành cái lồng mà anh chỉ muốn trốn khỏi.', speed: 90 },
     { action: 'pause', duration: 3000 },
     { action: 'type', text: '\nChắc là… thật ra anh sợ sự bình yên, sợ cái cảm giác đứng yên một chỗ.', speed: 95 },
     { action: 'pause', duration: 2500 },
     { action: 'type', text: '\n\nNhưng lúc ở bên em—nó lại khác.', speed: 80 },
     { action: 'pause', duration: 1500 },
-    { action: 'type', text: ' Lần đầu tiên,\nbình yên không còn là thứ anh muốn chạy trốn,\nmà là thứ anh muốn đắm chìm trong đó,\nmuốn được ôm trọn lấy.', speed: 85 },
+    { action: 'type', text: ' Lần đầu tiên, bình yên không còn là thứ anh muốn chạy trốn, mà là thứ anh muốn đắm chìm trong đó,\nmuốn được ôm trọn lấy.', speed: 85 },
     { action: 'pause', duration: 3500 },
     { action: 'type', text: '\n\nEm cũng nhắc anh nhớ lại một điều quan trọng lắm—', speed: 80 },
     { action: 'pause', duration: 1300 },
-    { action: 'type', text: '\nmột điều anh biết rõ,\nmà anh cố tình quên, hoặc giả vờ không thấy.', speed: 90 },
+    { action: 'type', text: '\nmột điều anh biết rõ,\nmà anh cố tình quên, hoặc giả vờ \nkhông thấy.', speed: 90 },
     { action: 'pause', duration: 2800 },
     { action: 'type', text: '\nEm nhắc anh rằng,\nkhi thật lòng thương một người,\nđâu phải để sở hữu.', speed: 85 },
     { action: 'pause', duration: 2500 },
@@ -391,7 +548,7 @@ const letterScript = [
     { action: 'pause', duration: 1500 },
     { action: 'type', text: ' Lỡ thương em...', speed: 120 },
     { action: 'pause', duration: 1000 },
-    { action: 'backspace', count: 11, speed: 50 },
+    { action: 'backspace', count: 15, speed: 50 },
     { action: 'pause', duration: 800 },
     { action: 'type', text: 'Lỡ thương em\ngiống như nhìn một bông hoa\nnở rộ trong khu vườn\nmà anh không bao giờ được bước vào.', speed: 85 },
     { action: 'pause', duration: 3500 },
@@ -425,7 +582,7 @@ const letterScript = [
     { action: 'pause', duration: 1500 },
     { action: 'type', text: '\nEm còn dạy anh mấy thứ nhỏ nhỏ nữa—\nnhư là lúc gắp đồ ăn từ dĩa chung,\nphải dùng đầu đũa ngược để gắp qua chén mình,\nrồi mới lật lại để ăn.', speed: 90 },
     { action: 'pause', duration: 2800 },
-    { action: 'type', text: '\n\n(This one still makes me laugh because I didn\'t believe you for some reason haha)', speed: 80 },
+    { action: 'type', text: '\n(This one still makes me laugh because I didn\'t believe you for some reason haha)', speed: 80 },
     { action: 'pause', duration: 1500 },
     { action: 'type', text: '\n\nCảm ơn em nha, Phương.', speed: 90 },
     { action: 'pause', duration: 2500 },
@@ -569,13 +726,13 @@ const letterScript = [
     { action: 'pause', duration: 1500 },
     { action: 'type', text: '\nnhưng nếu em nhắn,\nanh sẽ luôn trả lời.', speed: 100 },
     { action: 'pause', duration: 4000 },
-    { action: "type", text: '\n\nTrước khi kết thúc,\n\nanh muốn nói với em\nlà tiếng Việt của em đẹp vô cùng.\nCó mấy điều\n\nnó diễn tả được\n\nmà tiếng Anh chịu thua.', speed: 110 },
+    { action: "type", text: '\n\nTrước khi kết thúc,\n\nanh muốn nói với em\nlà tiếng Việt của em đẹp vô cùng.\nCó mấy điều nó diễn tả được mà tiếng Anh chịu thua.', speed: 110 },
     { action: "pause", "duration": 2000 },
-    { action: 'type', text: 'Từ anh thích nhất\n\nlà thương —\n\ncái tình muốn ôm hết nỗi buồn,\n\nnỗi đau của người mình thương,\n\ngánh giùm để họ khỏi phải chịu.', speed: 100 },
+    { action: 'type', text: ' Từ anh thích nhất\n\nlà thương\n\ncái tình muốn ôm hết nỗi buồn,\n\nnỗi đau của người mình thương,\n\ngánh giùm để họ khỏi phải chịu.', speed: 100 },
     { action: 'pause', duration: 2000 },
-    { action: 'type', text: 'Cái tình đó\n\nanh lúc nào cũng có…\n\nchỉ là trước giờ\n\nchưa biết gọi tên.', speed: 90 },
+    { action: 'type', text: ' Cái tình đó\n\nanh lúc nào cũng có…\n\nchỉ là trước giờ\n\nchưa biết gọi tên.', speed: 90 },
     { action: 'pause', duration: 2000 },
-    { action: 'type', text: 'Vậy nên, thêm một lần nữa —\n\nsinh nhật vui vẻ nha, Phương.\n\nAnh thương em.', speed: 85 }
+    { action: 'type', text: ' Vậy nên, thêm một lần nữa —\n\nsinh nhật vui vẻ nha, Phương.\n\nAnh thương em.', speed: 85 }
 ];
 
     const startTypingLetter = async () => {
@@ -816,7 +973,7 @@ const letterScript = [
             "Anh biết có thể chẳng bao giờ thành sự thật Nhưng nếu em từng muốn quay ngược thời gian với anh… thì tấm vé này sẽ là chìa khóa Để quên hết mọi thứ và bắt đầu lại",
             "Anh biết đây không phải vé đi xem Matt Rife – và anh biết em chắc sẽ thích cái đó. Nhưng biết đâu một ngày nào đó, nó cũng có thể là một lựa chọn",
             "À này, mong em đừng ngại khi anh dịch hết mấy cái này. Em không tưởng tượng nổi cái cực khổ của việc phải chỉnh sửa đi chỉnh sửa lại hàng giờ qua mấy ngày trời, mà vẫn không chắc đã truyền tải đúng ý mình muốn. Nhưng thà vậy còn hơn để nguyên tiếng Anh. Anh hiểu cái khó chịu khi bị hiểu lầm và không hiểu ngôn ngữ của đối phương, nên anh nghĩ đây vẫn là lựa chọn tốt hơn. Dù vậy anh cũng đang học được nhiều lắm và vẫn đang tiếp tục mỗi ngày",
-            "Lần cuối cùng… Chúc sinh nhật vui vẻ, Phương. Nếu em cần bất cứ điều gì, đừng ngần ngại nói với anh. Những khó khăn của em sẽ không bao giờ là gánh nặng"
+            "Lần cuối cùng… Chúc sinh nhật vui vẻ, Phương. Nếu em cần bất cứ điều gì, đừng ngần ngại nói với anh. Những khó khăn của em sẽ không bao giờ là gánh nặng."
         ];
         for (let i = 0; i < finalMessages.length; i++) {
             const message = finalMessages[i];
@@ -872,8 +1029,8 @@ const letterScript = [
 
     const downloadPDF = () => {
         const link = document.createElement('a');
-        link.href = './Phuong_Letter.pdf';
-        link.download = 'Phuong_Letter.pdf';
+        link.href = './Phuongs_Letter.pdf';
+        link.download = 'Phuongs_Letter.pdf';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
