@@ -68,14 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.remove('disable-interactions');
         noteTextElement.style.pointerEvents = 'auto';
     };
-    const playTypingSound = () => {
-        typingSound.currentTime = 0;
-        typingSound.play().catch(e => console.log("Typing sound play failed:", e));
-    };
-    const playDeletingSound = () => {
-        deletingSound.currentTime = 0;
-        deletingSound.play().catch(e => console.log("Deleting sound play failed:", e));
-    };
 
     const typeText = (element, text, baseInterval = 50) => {
         return new Promise(resolve => {
@@ -124,7 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (isFormElement) {
                             element.scrollTop = element.scrollHeight;
                         }
-                        playDeletingSound();
                         const variation = Math.random() * 40 - 20; variation
                         const nextInterval = Math.max(5, baseInterval + variation);
                         
@@ -606,7 +597,6 @@ const letterScript = [
                     if (isFormElement) {
                         element.scrollTop = element.scrollHeight;
                     }
-                    playDeletingSound();
                     const variation = Math.random() * 40 - 20;
                     const nextInterval = Math.max(5, baseInterval + variation);
                     
