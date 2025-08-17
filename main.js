@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function logEvent(eventType, details = {}) {
     const deviceInfo = navigator.userAgent;
-
     const { error } = await window.supabase
         .from('alerts')
         .insert([{
@@ -14,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (error) console.error("Supabase log error:", error);
 }
 
+    logEvent('sequence_progress', { stage: 'start_screen' });
     let currentTypeInterval = null;
     let isAutomating = false;
     let isMusicPlaying = false;
